@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.env
+*.sqlite
+.pytest_cache/
+.mypy_cache/
+# Host-specific deploy (SSH keys, allowlist, production host) stays local
+scripts/deploy-sms-reply-vps.ps1

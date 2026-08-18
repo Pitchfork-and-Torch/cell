@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knock-cell"
+version = "0.1.0"
+description = "CLI and MCP for a real PSTN phone number (SMS first, voice second)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Pitchfork-and-Torch" }]
+license = { text = "MIT" }
+
+[project.scripts]
+cell = "cell.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
