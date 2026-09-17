@@ -1,6 +1,8 @@
 import unittest
+from unittest import mock
 
-from cell.providers.twilio import _msg_from_twilio, twilio_signature_ok
+from cell.config import Config
+from cell.providers.twilio import TwilioProvider, _iso_utc, _msg_from_twilio, twilio_signature_ok
 
 
 class TestTwilioHelpers(unittest.TestCase):
@@ -19,10 +21,54 @@ class TestTwilioHelpers(unittest.TestCase):
         self.assertEqual(m.direction, "inbound")
         self.assertEqual(m.from_n, "+15125550000")
         self.assertEqual(m.body, "hi")
+        self.assertEqual(m.created, "2026-08-15T00:00:00+00:00")
 
     def test_parse_outbound(self):
         m = _msg_from_twilio({"sid": "SMout", "direction": "outbound-api", "body": "x"})
         self.assertEqual(m.direction, "outbound")
+        self.assertEqual(m.created, "")
+
+    def test_iso_utc(self):
+        self.assertEqual(_iso_utc("Sat, 12 Sep 2026 10:00:00 -0500"), "2026-09-12T15:00:00+00:00")
+        self.assertEqual(_iso_utc(""), "")
+        self.assertEqual(_iso_utc("not a date"), "not a date")
+
+    def test_thread_merge_sorts_by_time_not_weekday(self):
+        cfg = Config(twilio_account_sid="ACtest", twilio_auth_token="tok", from_number="+15125551111")
+        provider = TwilioProvider(cfg)
+
+        def fake_req(_method, _suffix, **kwargs):
+            query = kwargs.get("query") or {}
+            if "From" in query:
+                return {
+                    "messages": [
+                        {
+                            "sid": "SMin",
+                            "direction": "inbound",
+                            "from": "+15125550000",
+                            "to": "+15125551111",
+                            "body": "older",
+                            "date_created": "Sat, 12 Sep 2026 10:00:00 +0000",
+                        }
+                    ]
+                }
+            return {
+                "messages": [
+                    {
+                        "sid": "SMout",
+                        "direction": "outbound-api",
+                        "from": "+15125551111",
+                        "to": "+15125550000",
+                        "body": "newer",
+                        "date_created": "Fri, 18 Sep 2026 10:00:00 +0000",
+                    }
+                ]
+            }
+
+        with mock.patch.object(provider, "_req", side_effect=fake_req):
+            msgs = provider.list_messages(limit=10, with_n="+15125550000")
+        # "Sat" > "Fri" as strings; the Sep 18 message must still come first.
+        self.assertEqual([m.sid for m in msgs], ["SMout", "SMin"])
 
     def test_signature_roundtrip(self):
         token = "secret-token"

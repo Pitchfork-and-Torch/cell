@@ -5,6 +5,8 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 from cell.config import Config
@@ -239,11 +241,26 @@ def _msg_from_twilio(item: dict) -> Message:
         to=item.get("to") or "",
         body=item.get("body") or "",
         status=item.get("status") or "",
-        created=item.get("date_created") or item.get("date_sent") or "",
+        created=_iso_utc(item.get("date_created") or item.get("date_sent") or ""),
         error=err,
         price=str(item.get("price") or ""),
         segments=str(item.get("num_segments") or ""),
     )
+
+
+def _iso_utc(stamp: str) -> str:
+    """Twilio dates are RFC 2822 ("Fri, 15 Aug 2026 ..."). As plain strings they
+    sort by weekday name, which breaks the thread merge and the sqlite
+    ORDER BY. Rewrite to ISO 8601 UTC so string order equals time order."""
+    if not stamp:
+        return ""
+    try:
+        dt = parsedate_to_datetime(stamp)
+    except (TypeError, ValueError):
+        return stamp
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).isoformat()
 
 
 def twilio_signature_ok(auth_token: str, url: str, params: dict[str, str], header: str) -> bool:
