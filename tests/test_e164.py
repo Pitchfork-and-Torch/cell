@@ -47,6 +47,16 @@ class TestE164(unittest.TestCase):
         self.assertEqual(normalize("+1-800-FLOWERS"), "+18003569377")
         self.assertEqual(normalize("1-800-GOT-JUNK"), "+18004685865")
 
+    def test_tel_sip_uri_scheme_not_vanity_mapped(self):
+        # tel:/sip: must be stripped before vanity keypad mapping.
+        self.assertEqual(normalize("tel:+15551234567"), "+15551234567")
+        self.assertEqual(normalize("TEL:+1-555-123-4567"), "+15551234567")
+        self.assertEqual(normalize("sip:+15551234567@sip.example.com"), "+15551234567")
+        self.assertEqual(normalize("sips:+15551234567@sip.example.com"), "+15551234567")
+        self.assertEqual(normalize("tel:+15551234567;phone-context=nanp"), "+15551234567")
+        # Vanity still works after scheme strip.
+        self.assertEqual(normalize("tel:1-800-FLOWERS"), "+18003569377")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -46,8 +46,33 @@ def _strip_extension(text: str) -> str:
     return text.strip()
 
 
+def _strip_uri_scheme(text: str) -> str:
+    """Drop tel:/sip:/sips: so vanity mapping cannot turn 'tel' into 835.
+
+    Contact apps and PBX paste often use RFC 3966 / SIP URIs. Without this,
+    translate(_VANITY) maps T->8, E->3, L->5 and 'tel:+15551234567' becomes
+    the wrong E.164 +83515551234567.
+    """
+    lower = text.lower()
+    for prefix in ("tel:", "sips:", "sip:"):
+        if lower.startswith(prefix):
+            text = text[len(prefix) :]
+            break
+    # Drop URI parameters / headers and user@host wrappers.
+    if "@" in text:
+        text = text.split("@", 1)[0]
+    if ";" in text:
+        text = text.split(";", 1)[0]
+    if "?" in text:
+        text = text.split("?", 1)[0]
+    return text.strip()
+
+
 def normalize(raw: str, default_cc: str = "1") -> str:
     text = (raw or "").strip()
+    if not text:
+        raise PhoneError("empty phone number")
+    text = _strip_uri_scheme(text)
     if not text:
         raise PhoneError("empty phone number")
     text = _strip_extension(text)
