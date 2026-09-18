@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
@@ -121,6 +122,7 @@ def _from_twilio_form(form: dict[str, str]) -> Message | None:
         to=form.get("To") or "",
         body=form.get("Body") or "",
         status=form.get("SmsStatus") or "received",
+        created=datetime.now(timezone.utc).isoformat(),
     )
 
 
@@ -161,4 +163,5 @@ def _from_telnyx_json(raw: bytes) -> Message | None:
         to=to_n,
         body=body,
         status="received",
+        created=datetime.now(timezone.utc).isoformat(),
     )
