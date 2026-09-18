@@ -160,8 +160,11 @@ def send_sms(
         what=f"Send SMS to {dest}?",
         note=sms_cost_note(body),
     )
-    _rate(cfg, "sms", cfg.daily_sms_limit, force)
+    # Check the daily cap first; bump only after a successful send so a
+    # provider/network failure does not burn quota.
+    _rate_check(cfg, "sms", cfg.daily_sms_limit, force)
     msg = get_provider(cfg).send_sms(dest, body)
+    _rate_bump(cfg, "sms")
     con = connect(cfg.db_path)
     upsert_message(con, msg, source="outbound")
     con.close()
@@ -207,8 +210,9 @@ def call(
     cfg = cfg or load()
     dest = normalize(to)
     require_yes(yes=yes, auto=cfg.auto_confirm, what=f"Place voice call to {dest}?", note=call_cost_note())
-    _rate(cfg, "call", cfg.daily_call_limit, force)
+    _rate_check(cfg, "call", cfg.daily_call_limit, force)
     result = get_provider(cfg).place_call(dest, say=say, twiml_url=url)
+    _rate_bump(cfg, "call")
     return {"ok": True, "call": result.to_dict(), "cost": call_cost_note()}
 
 
@@ -220,14 +224,18 @@ def set_webhook(url: str, *, number: str | None = None, cfg: Config | None = Non
     return {"ok": True, **data}
 
 
-def _rate(cfg: Config, kind: str, limit: int, force: bool) -> None:
+def _rate_check(cfg: Config, kind: str, limit: int, force: bool) -> None:
     con = connect(cfg.db_path)
     used = usage_today(con, kind)
+    con.close()
     if used >= limit and not force:
-        con.close()
         raise ProviderError(
             f"daily {kind} limit reached ({used}/{limit}). Pass --force to override, or raise daily_{kind}_limit in config."
         )
+
+
+def _rate_bump(cfg: Config, kind: str) -> None:
+    con = connect(cfg.db_path)
     bump_usage(con, kind)
     con.close()
 
