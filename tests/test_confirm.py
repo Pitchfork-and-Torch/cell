@@ -19,6 +19,15 @@ class TestConfirm(unittest.TestCase):
         with self.assertRaises(NeedConfirm):
             require_yes(yes=False, auto=False, what="send", note="costs", tty_prompt=False)
 
+    def test_gsm7_escape_septets(self):
+        # Extension chars cost 2 septets; 81 braces = 162 > 160 single-SMS cap.
+        self.assertTrue(gsm7_ok("{" * 81))
+        self.assertEqual(segments("{" * 80), 1)  # 160 septets
+        self.assertEqual(segments("{" * 81), 2)  # 162 septets -> multipart
+        self.assertTrue(gsm7_ok("price €9"))
+        self.assertEqual(segments("€" * 80), 1)
+        self.assertEqual(segments("€" * 81), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

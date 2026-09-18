@@ -6,23 +6,34 @@ import sys
 
 from cell.models import NeedConfirm
 
+# GSM 03.38 extension table (escape + char = 2 septets). € is U+20AC.
+_GSM7_EXT = frozenset("^{}\\[~]|€")
+
 
 def gsm7_ok(text: str) -> bool:
-    # Practical GSM-7: BMP latin + common punctuation. Not a full GSM table.
+    # Practical GSM-7: BMP latin/punct plus the extension set. Not a full GSM table.
     for ch in text:
+        if ch in _GSM7_EXT:
+            continue
         o = ord(ch)
-        if o > 126 and ch not in "\n\r\t":
+        if o > 126:
             return False
     return True
+
+
+def gsm7_septets(text: str) -> int:
+    """Septet length for GSM-7 text. Extension chars cost 2."""
+    return sum(2 if ch in _GSM7_EXT else 1 for ch in text)
 
 
 def segments(text: str) -> int:
     if not text:
         return 1
     if gsm7_ok(text):
-        if len(text) <= 160:
+        n = gsm7_septets(text)
+        if n <= 160:
             return 1
-        return (len(text) + 152) // 153
+        return (n + 152) // 153
     if len(text) <= 70:
         return 1
     return (len(text) + 66) // 67
