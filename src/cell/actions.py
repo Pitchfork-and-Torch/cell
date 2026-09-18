@@ -159,7 +159,7 @@ def doctor(cfg: Config | None = None, *, live: bool = True) -> dict[str, Any]:
 
 def init(
     *,
-    provider: str = "twilio",
+    provider: str | None = None,
     from_number: str = "",
     import_env: str | None = None,
 ) -> dict[str, Any]:

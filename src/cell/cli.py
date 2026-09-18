@@ -127,7 +127,12 @@ def _parser() -> argparse.ArgumentParser:
     )
 
     s = add_cmd("init", "write ~/.grok/cell config + secrets (masked)")
-    s.add_argument("--provider", default="twilio", choices=["twilio", "telnyx", "modem"])
+    s.add_argument(
+        "--provider",
+        default=None,
+        choices=["twilio", "telnyx", "modem"],
+        help="set provider (omit on re-init to keep the existing value)",
+    )
     s.add_argument("--from-number", default="", dest="from_number")
     s.add_argument("--import-env", default="", help="path to .env with TWILIO_* or TELNYX_*")
     s.set_defaults(

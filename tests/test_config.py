@@ -59,3 +59,24 @@ class TestConfig(CellHomeCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_init_explicit_provider_replaces(self):
+        from cell.config import write_init
+
+        self.write_twilio_config(from_number="+15125550100")
+        write_init(provider="telnyx", telnyx_api_key="KEY")
+        cfg_text = (self.home / "config.toml").read_text(encoding="utf-8")
+        self.assertIn('provider = "telnyx"', cfg_text)
+        self.assertNotIn('provider = "twilio"', cfg_text)
+        # from_number kept when not passed
+        self.assertIn('from_number = "+15125550100"', cfg_text)
+
+    def test_init_omitted_provider_keeps_existing(self):
+        from cell.config import write_init
+
+        self.write_twilio_config(from_number="+15125550100")
+        write_init(from_number="+15125550999")
+        cfg_text = (self.home / "config.toml").read_text(encoding="utf-8")
+        self.assertIn('provider = "twilio"', cfg_text)
+        self.assertIn('from_number = "+15125550999"', cfg_text)

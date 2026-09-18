@@ -87,7 +87,7 @@ def load(*, create: bool = True) -> Config:
 
 def write_init(
     *,
-    provider: str = "twilio",
+    provider: str | None = None,
     from_number: str = "",
     twilio_account_sid: str = "",
     twilio_auth_token: str = "",
@@ -110,6 +110,8 @@ def write_init(
         or ""
     )
     tkey = telnyx_api_key or imported.get("TELNYX_API_KEY") or os.environ.get("TELNYX_API_KEY", "")
+    # None means "not passed" so re-init can keep an existing provider (CLI default).
+    explicit_provider = provider is not None
     prov = (provider or imported.get("CELL_PROVIDER") or os.environ.get("CELL_PROVIDER") or "twilio").lower()
     config_path = home / "config.toml"
     if not config_path.exists():
@@ -129,21 +131,29 @@ def write_init(
     else:
         # Keep existing non-secret keys. Fill an empty from_number, or replace
         # when the caller passed --from-number / from_number= explicitly.
+        # Same for provider: only rewrite when --provider was passed.
         existing = _read_toml(config_path)
         cur = str(existing.get("from_number") or "").strip()
         explicit = bool((from_number or "").strip())
-        if from_n and (explicit or not cur):
-            lines = config_path.read_text(encoding="utf-8").splitlines()
-            out: list[str] = []
-            replaced = False
-            for line in lines:
-                if line.strip().startswith("from_number"):
-                    out.append(f'from_number = "{_toml_str(from_n)}"')
-                    replaced = True
-                else:
-                    out.append(line)
-            if not replaced:
+        lines = config_path.read_text(encoding="utf-8").splitlines()
+        out: list[str] = []
+        replaced_from = False
+        replaced_prov = False
+        for line in lines:
+            stripped = line.strip()
+            if from_n and (explicit or not cur) and stripped.startswith("from_number"):
                 out.append(f'from_number = "{_toml_str(from_n)}"')
+                replaced_from = True
+            elif explicit_provider and stripped.startswith("provider"):
+                out.append(f'provider = "{_toml_str(prov)}"')
+                replaced_prov = True
+            else:
+                out.append(line)
+        if from_n and (explicit or not cur) and not replaced_from:
+            out.append(f'from_number = "{_toml_str(from_n)}"')
+        if explicit_provider and not replaced_prov:
+            out.append(f'provider = "{_toml_str(prov)}"')
+        if (from_n and (explicit or not cur)) or explicit_provider:
             config_path.write_text("\n".join(out) + "\n", encoding="utf-8")
     secrets_path = home / "secrets.toml"
     secrets_path.write_text(
