@@ -127,8 +127,24 @@ def write_init(
             encoding="utf-8",
         )
     else:
-        # keep existing non-secret file; only fill from_number if empty
-        pass
+        # Keep existing non-secret keys. Fill an empty from_number, or replace
+        # when the caller passed --from-number / from_number= explicitly.
+        existing = _read_toml(config_path)
+        cur = str(existing.get("from_number") or "").strip()
+        explicit = bool((from_number or "").strip())
+        if from_n and (explicit or not cur):
+            lines = config_path.read_text(encoding="utf-8").splitlines()
+            out: list[str] = []
+            replaced = False
+            for line in lines:
+                if line.strip().startswith("from_number"):
+                    out.append(f'from_number = "{_toml_str(from_n)}"')
+                    replaced = True
+                else:
+                    out.append(line)
+            if not replaced:
+                out.append(f'from_number = "{_toml_str(from_n)}"')
+            config_path.write_text("\n".join(out) + "\n", encoding="utf-8")
     secrets_path = home / "secrets.toml"
     secrets_path.write_text(
         (

@@ -37,5 +37,25 @@ class TestConfig(CellHomeCase):
         self.assertTrue(cfg.auto_confirm)
 
 
+    def test_init_fills_empty_from_number(self):
+        from cell.config import write_init
+
+        self.write_twilio_config(from_number="")
+        # Empty from_number in file; env/arg should fill it without rewriting other keys.
+        write_init(from_number="+15125550999")
+        cfg_text = (self.home / "config.toml").read_text(encoding="utf-8")
+        self.assertIn("from_number = \"+15125550999\"", cfg_text)
+        self.assertIn("daily_sms_limit", cfg_text)
+
+    def test_init_explicit_from_number_replaces(self):
+        from cell.config import write_init
+
+        self.write_twilio_config(from_number="+15125550100")
+        write_init(from_number="+15125550999")
+        cfg_text = (self.home / "config.toml").read_text(encoding="utf-8")
+        self.assertIn("from_number = \"+15125550999\"", cfg_text)
+        self.assertNotIn("from_number = \"+15125550100\"", cfg_text)
+
+
 if __name__ == "__main__":
     unittest.main()
