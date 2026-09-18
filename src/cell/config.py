@@ -98,8 +98,20 @@ def write_init(
     imported: dict[str, str] = {}
     if import_env:
         imported = _read_env_file(import_env)
-    sid = twilio_account_sid or imported.get("TWILIO_ACCOUNT_SID") or os.environ.get("TWILIO_ACCOUNT_SID", "")
-    token = twilio_auth_token or imported.get("TWILIO_AUTH_TOKEN") or os.environ.get("TWILIO_AUTH_TOKEN", "")
+    secrets_path = home / "secrets.toml"
+    existing = _read_toml(secrets_path) if secrets_path.is_file() else {}
+    sid = (
+        twilio_account_sid
+        or imported.get("TWILIO_ACCOUNT_SID")
+        or os.environ.get("TWILIO_ACCOUNT_SID", "")
+        or str(existing.get("twilio_account_sid") or "")
+    )
+    token = (
+        twilio_auth_token
+        or imported.get("TWILIO_AUTH_TOKEN")
+        or os.environ.get("TWILIO_AUTH_TOKEN", "")
+        or str(existing.get("twilio_auth_token") or "")
+    )
     from_n = (
         from_number
         or imported.get("CELL_FROM")
@@ -108,7 +120,12 @@ def write_init(
         or os.environ.get("TWILIO_PHONE_NUMBER")
         or ""
     )
-    tkey = telnyx_api_key or imported.get("TELNYX_API_KEY") or os.environ.get("TELNYX_API_KEY", "")
+    tkey = (
+        telnyx_api_key
+        or imported.get("TELNYX_API_KEY")
+        or os.environ.get("TELNYX_API_KEY", "")
+        or str(existing.get("telnyx_api_key") or "")
+    )
     prov = (provider or imported.get("CELL_PROVIDER") or os.environ.get("CELL_PROVIDER") or "twilio").lower()
     config_path = home / "config.toml"
     if not config_path.exists():
@@ -128,7 +145,6 @@ def write_init(
     else:
         # keep existing non-secret file; only fill from_number if empty
         pass
-    secrets_path = home / "secrets.toml"
     secrets_path.write_text(
         (
             f'twilio_account_sid = "{_toml_str(sid)}"\n'
