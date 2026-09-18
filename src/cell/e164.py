@@ -17,6 +17,10 @@ def normalize(raw: str, default_cc: str = "1") -> str:
         raise PhoneError("empty phone number")
     if text.startswith("00"):
         text = "+" + text[2:]
+    # US/Canada international dialing prefix (011 + country code...).
+    # Without this, "011441234567890" becomes +011441234567890.
+    elif text.startswith("011"):
+        text = "+" + text[3:]
     if text.startswith("+"):
         digits = _DIGITS.sub("", text[1:])
         if len(digits) < 8 or len(digits) > 15:

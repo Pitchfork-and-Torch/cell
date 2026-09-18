@@ -29,5 +29,11 @@ class TestE164(unittest.TestCase):
             normalize("not-a-number")
 
 
+
+    def test_us_011_intl_prefix(self):
+        # US international access code 011, same idea as 00 abroad.
+        self.assertEqual(normalize("011441234567890"), "+441234567890")
+        self.assertEqual(normalize("011 44 7700 900123"), "+447700900123")
+
 if __name__ == "__main__":
     unittest.main()
