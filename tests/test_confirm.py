@@ -28,6 +28,15 @@ class TestConfirm(unittest.TestCase):
         self.assertEqual(segments("€" * 80), 1)
         self.assertEqual(segments("€" * 81), 2)
 
+    def test_ucs2_emoji_units(self):
+        # Each emoji is one Python char but two UTF-16 code units.
+        emoji = "\U0001F600"  # grinning face
+        self.assertFalse(gsm7_ok(emoji))
+        self.assertEqual(segments(emoji * 35), 1)  # 70 units
+        self.assertEqual(segments(emoji * 36), 2)  # 72 units -> multipart
+        # Old len()-based math wrongly reported 70 emoji as a single segment.
+        self.assertGreaterEqual(segments(emoji * 70), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

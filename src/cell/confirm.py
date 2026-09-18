@@ -26,6 +26,11 @@ def gsm7_septets(text: str) -> int:
     return sum(2 if ch in _GSM7_EXT else 1 for ch in text)
 
 
+def _ucs2_units(text: str) -> int:
+    """UTF-16 code units (UCS-2 SMS length). Supplementary-plane chars cost 2."""
+    return len(text.encode("utf-16-le")) // 2
+
+
 def segments(text: str) -> int:
     if not text:
         return 1
@@ -34,9 +39,12 @@ def segments(text: str) -> int:
         if n <= 160:
             return 1
         return (n + 152) // 153
-    if len(text) <= 70:
+    # Non-GSM goes UCS-2: length is UTF-16 code units, not Python code points.
+    # 70 emoji is 140 units -> multipart; len(text) alone under-counted cost.
+    n = _ucs2_units(text)
+    if n <= 70:
         return 1
-    return (len(text) + 66) // 67
+    return (n + 66) // 67
 
 
 def sms_cost_note(text: str) -> str:
