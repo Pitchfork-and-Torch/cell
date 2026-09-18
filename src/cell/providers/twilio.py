@@ -158,23 +158,27 @@ class TwilioProvider(Provider):
         return _msg_from_twilio(payload)
 
     def list_messages(self, *, limit: int = 20, with_n: str | None = None) -> list[Message]:
-        query: dict[str, Any] = {"PageSize": min(max(limit, 1), 100)}
+        page = min(max(limit, 1), 100)
         if with_n:
-            query["From"] = normalize(with_n)
-        body = self._req("GET", "Messages.json", query=query)
-        items = [_msg_from_twilio(x) for x in body.get("messages") or []]
-        if with_n and len(items) < limit:
-            # also messages we sent to that number
-            extra = self._req(
-                "GET",
-                "Messages.json",
-                query={"PageSize": min(max(limit, 1), 100), "To": normalize(with_n)},
-            )
-            seen = {m.sid for m in items}
-            for x in extra.get("messages") or []:
-                m = _msg_from_twilio(x)
-                if m.sid not in seen:
+            # Always fetch both directions, then merge/sort/limit.
+            # Skipping To= when From= already returned `limit` rows hid outbound
+            # messages in busy threads (cell thread / inbox --with).
+            peer = normalize(with_n)
+            inbound = self._req("GET", "Messages.json", query={"PageSize": page, "From": peer})
+            outbound = self._req("GET", "Messages.json", query={"PageSize": page, "To": peer})
+            items: list[Message] = []
+            seen: set[str] = set()
+            for batch in (inbound.get("messages") or [], outbound.get("messages") or []):
+                for x in batch:
+                    m = _msg_from_twilio(x)
+                    if m.sid and m.sid in seen:
+                        continue
+                    if m.sid:
+                        seen.add(m.sid)
                     items.append(m)
+        else:
+            body = self._req("GET", "Messages.json", query={"PageSize": page})
+            items = [_msg_from_twilio(x) for x in body.get("messages") or []]
         items.sort(key=lambda m: m.created, reverse=True)
         return items[:limit]
 
