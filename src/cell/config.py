@@ -173,11 +173,16 @@ def _apply_toml(cfg: Config, data: dict) -> None:
         return
     cfg.provider = str(data.get("provider") or cfg.provider)
     cfg.from_number = str(data.get("from_number") or cfg.from_number)
-    cfg.daily_sms_limit = int(data.get("daily_sms_limit") or cfg.daily_sms_limit)
-    cfg.daily_call_limit = int(data.get("daily_call_limit") or cfg.daily_call_limit)
+    # Use "is not None" so operators can set 0 (kill-switch quota / ephemeral port).
+    # `int(x or default)` treated 0 as missing and kept the prior default.
+    if "daily_sms_limit" in data and data["daily_sms_limit"] is not None:
+        cfg.daily_sms_limit = int(data["daily_sms_limit"])
+    if "daily_call_limit" in data and data["daily_call_limit"] is not None:
+        cfg.daily_call_limit = int(data["daily_call_limit"])
     if "auto_confirm" in data:
         cfg.auto_confirm = bool(data.get("auto_confirm"))
-    cfg.webhook_port = int(data.get("webhook_port") or cfg.webhook_port)
+    if "webhook_port" in data and data["webhook_port"] is not None:
+        cfg.webhook_port = int(data["webhook_port"])
     cfg.public_url = str(data.get("public_url") or cfg.public_url)
     cfg.country = str(data.get("country") or cfg.country)
     tw = data.get("twilio") if isinstance(data.get("twilio"), dict) else {}
