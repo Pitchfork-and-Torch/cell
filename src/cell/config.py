@@ -168,6 +168,26 @@ def write_init(
     return load()
 
 
+
+def _as_bool(value) -> bool:
+    """Parse operator bools. Strings like "false"/"0"/"no" must stay off.
+
+    Plain ``bool("false")`` is True in Python, which silently armed
+    auto_confirm when a TOML/env string said false.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0 and value == value  # reject NaN via != self
+    text = str(value).strip().lower()
+    if text in ("1", "true", "yes", "on"):
+        return True
+    if text in ("0", "false", "no", "off", ""):
+        return False
+    # Unknown token: fail closed (do not auto-confirm).
+    return False
+
+
 def _apply_toml(cfg: Config, data: dict) -> None:
     if not data:
         return
@@ -180,7 +200,7 @@ def _apply_toml(cfg: Config, data: dict) -> None:
     if "daily_call_limit" in data and data["daily_call_limit"] is not None:
         cfg.daily_call_limit = int(data["daily_call_limit"])
     if "auto_confirm" in data:
-        cfg.auto_confirm = bool(data.get("auto_confirm"))
+        cfg.auto_confirm = _as_bool(data.get("auto_confirm"))
     if "webhook_port" in data and data["webhook_port"] is not None:
         cfg.webhook_port = int(data["webhook_port"])
     cfg.public_url = str(data.get("public_url") or cfg.public_url)
@@ -217,8 +237,8 @@ def _apply_environ(cfg: Config) -> None:
         cfg.telnyx_api_key = env["TELNYX_API_KEY"]
     if env.get("CELL_PUBLIC_URL"):
         cfg.public_url = env["CELL_PUBLIC_URL"]
-    if env.get("CELL_AUTO_CONFIRM") in ("1", "true", "yes"):
-        cfg.auto_confirm = True
+    if "CELL_AUTO_CONFIRM" in env:
+        cfg.auto_confirm = _as_bool(env.get("CELL_AUTO_CONFIRM"))
     if env.get("CELL_WEBHOOK_PORT"):
         cfg.webhook_port = int(env["CELL_WEBHOOK_PORT"])
 
