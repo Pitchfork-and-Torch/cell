@@ -13,6 +13,28 @@ _EXT = re.compile(
 )
 _EXT_URI = re.compile(r";ext=\d+\s*$", re.IGNORECASE)
 
+# ITU E.161 / NANP vanity keypad (1-800-FLOWERS -> 1-800-3569377).
+_VANITY = str.maketrans(
+    {
+        "A": "2", "B": "2", "C": "2",
+        "D": "3", "E": "3", "F": "3",
+        "G": "4", "H": "4", "I": "4",
+        "J": "5", "K": "5", "L": "5",
+        "M": "6", "N": "6", "O": "6",
+        "P": "7", "Q": "7", "R": "7", "S": "7",
+        "T": "8", "U": "8", "V": "8",
+        "W": "9", "X": "9", "Y": "9", "Z": "9",
+        "a": "2", "b": "2", "c": "2",
+        "d": "3", "e": "3", "f": "3",
+        "g": "4", "h": "4", "i": "4",
+        "j": "5", "k": "5", "l": "5",
+        "m": "6", "n": "6", "o": "6",
+        "p": "7", "q": "7", "r": "7", "s": "7",
+        "t": "8", "u": "8", "v": "8",
+        "w": "9", "x": "9", "y": "9", "z": "9",
+    }
+)
+
 
 class PhoneError(ValueError):
     pass
@@ -31,6 +53,10 @@ def normalize(raw: str, default_cc: str = "1") -> str:
     text = _strip_extension(text)
     if not text:
         raise PhoneError("empty phone number")
+    # Map vanity letters before digit scrubbing so FLOWERS is not dropped.
+    # Require at least one digit so pure garbage ("not-a-number") still errors.
+    if any(ch.isalpha() for ch in text) and any(ch.isdigit() for ch in text):
+        text = text.translate(_VANITY)
     if text.startswith("00"):
         text = "+" + text[2:]
     # US/Canada international dialing prefix (011 + country code...).

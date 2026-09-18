@@ -28,16 +28,10 @@ class TestE164(unittest.TestCase):
         with self.assertRaises(PhoneError):
             normalize("not-a-number")
 
-
-
     def test_us_011_intl_prefix(self):
         # US international access code 011, same idea as 00 abroad.
         self.assertEqual(normalize("011441234567890"), "+441234567890")
         self.assertEqual(normalize("011 44 7700 900123"), "+447700900123")
-
-if __name__ == "__main__":
-    unittest.main()
-
 
     def test_strip_extension_suffix(self):
         # Contact/PBX paste often includes x/ext; digits-only scrub glued them on.
@@ -46,3 +40,13 @@ if __name__ == "__main__":
         self.assertEqual(normalize("512-555-1212x4"), "+15125551212")
         self.assertEqual(normalize("+15125551212;ext=99"), "+15125551212")
         self.assertEqual(normalize("1 (512) 555-1212 x12"), "+15125551212")
+
+    def test_vanity_letters_map_to_keypad(self):
+        self.assertEqual(normalize("1-800-FLOWERS"), "+18003569377")
+        self.assertEqual(normalize("800-FLOWERS"), "+18003569377")
+        self.assertEqual(normalize("+1-800-FLOWERS"), "+18003569377")
+        self.assertEqual(normalize("1-800-GOT-JUNK"), "+18004685865")
+
+
+if __name__ == "__main__":
+    unittest.main()
