@@ -37,3 +37,12 @@ class TestE164(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+    def test_strip_extension_suffix(self):
+        # Contact/PBX paste often includes x/ext; digits-only scrub glued them on.
+        self.assertEqual(normalize("5125551212x123"), "+15125551212")
+        self.assertEqual(normalize("5125551212 ext 99"), "+15125551212")
+        self.assertEqual(normalize("512-555-1212x4"), "+15125551212")
+        self.assertEqual(normalize("+15125551212;ext=99"), "+15125551212")
+        self.assertEqual(normalize("1 (512) 555-1212 x12"), "+15125551212")

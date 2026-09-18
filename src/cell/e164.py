@@ -5,14 +5,30 @@ from __future__ import annotations
 import re
 
 _DIGITS = re.compile(r"\D+")
+# Contact apps and PBX paste often append extensions. Digits-only scrubbing
+# used to glue them onto the subscriber number (5125551212x99 -> +512555121299).
+_EXT = re.compile(
+    r"(?:[\s.;,]*(?:ext(?:ension)?|x|\#)\s*\.?\s*\d+\s*)$",
+    re.IGNORECASE,
+)
+_EXT_URI = re.compile(r";ext=\d+\s*$", re.IGNORECASE)
 
 
 class PhoneError(ValueError):
     pass
 
 
+def _strip_extension(text: str) -> str:
+    text = _EXT_URI.sub("", text)
+    text = _EXT.sub("", text)
+    return text.strip()
+
+
 def normalize(raw: str, default_cc: str = "1") -> str:
     text = (raw or "").strip()
+    if not text:
+        raise PhoneError("empty phone number")
+    text = _strip_extension(text)
     if not text:
         raise PhoneError("empty phone number")
     if text.startswith("00"):
